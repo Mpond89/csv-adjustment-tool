@@ -17,16 +17,29 @@
             background-color: #334155; border: 1px solid #475569; color: white; border-radius: 0.5rem; padding: 0.5rem 0.75rem; width: 100%;
         }
         input:focus { outline: 2px solid #3b82f6; border-color: transparent; }
-        .preview-container { max-height: 400px; overflow: auto; border-radius: 0.5rem; background: #0f172a; border: 1px solid #334155; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-        th { background: #334155; position: sticky; top: 0; padding: 0.75rem; text-align: left; z-index: 10; }
-        td { padding: 0.75rem; border-bottom: 1px solid #334155; white-space: nowrap; }
-        .highlight-j { color: #60a5fa; font-weight: bold; background-color: rgba(59, 130, 246, 0.05); }
-        .highlight-r { color: #c084fc; font-weight: bold; background-color: rgba(168, 85, 247, 0.05); }
+        .preview-container { max-height: 600px; overflow: auto; border-radius: 0.5rem; background: #0f172a; border: 1px solid #334155; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; table-layout: auto; }
+        th { background: #334155; position: sticky; top: 0; padding: 0.75rem; text-align: left; z-index: 20; white-space: nowrap; color: #94a3b8; border-bottom: 2px solid #1e293b; }
+        td { padding: 0.75rem; border-bottom: 1px solid #334155; vertical-align: top; }
+        .highlight-j { background-color: rgba(59, 130, 246, 0.05); }
+        .highlight-r { background-color: rgba(168, 85, 247, 0.08); }
+        .diff-old { color: #ef4444; text-decoration: line-through; margin-right: 0.5rem; font-weight: bold; }
+        .diff-new { color: #22c55e; font-weight: bold; }
         .btn-primary { background-color: #2563eb; transition: all 0.2s; }
         .btn-primary:hover { background-color: #1d4ed8; }
         .btn-success { background-color: #16a34a; transition: all 0.2s; }
         .btn-success:hover { background-color: #15803d; }
+        
+        .json-content { 
+            font-family: 'Fira Code', 'Cascadia Code', monospace; 
+            white-space: pre-wrap; 
+            word-break: break-all; 
+            min-width: 1200px; 
+            max-width: 2400px; 
+            display: block;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -34,7 +47,7 @@
     <div id="app" class="max-w-7xl mx-auto">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-extrabold text-blue-400">CSV Adjustment Tool</h1>
-            <p class="text-gray-400 mt-2">Intelligent CSV pricing updates based on field names and SKU patterns.</p>
+            <p class="text-gray-400 mt-2">Intelligent CSV pricing updates with visual change tracking.</p>
         </header>
 
         <!-- Configuration Card -->
@@ -74,7 +87,6 @@
                     </h3>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <!-- Field 1: Price per Yard -->
                         <div class="space-y-4">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-widest border-b border-purple-500/20 pb-1">Price Adjustments</div>
                             <div>
@@ -93,7 +105,6 @@
                             </div>
                         </div>
 
-                        <!-- Field 2: Cost to us -->
                         <div class="space-y-4">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-widest border-b border-purple-500/20 pb-1">Cost Adjustments</div>
                             <div>
@@ -112,7 +123,6 @@
                             </div>
                         </div>
 
-                        <!-- Field 3: Fabric Only -->
                         <div class="space-y-4">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-widest border-b border-purple-500/20 pb-1">Fabric Cost Adjustments</div>
                             <div>
@@ -134,7 +144,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex flex-col sm:flex-row gap-4">
                 <button id="runButton" class="flex-1 btn-primary px-6 py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center">
                     <i data-lucide="play" class="w-5 h-5 mr-2"></i> Run Adjustments
@@ -152,35 +161,30 @@
             <h2 class="text-xl font-semibold mb-4 flex items-center">
                 <i data-lucide="bar-chart" class="w-6 h-6 mr-2 text-green-400"></i> Processing Results
             </h2>
-            <div id="statsContent" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                <!-- Populated by JS -->
-            </div>
+            <div id="statsContent" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"></div>
         </div>
 
         <!-- Preview Table -->
-        <div class="card">
+        <div class="card overflow-hidden">
             <h2 class="text-xl font-semibold mb-4 flex items-center text-purple-300">
-                <i data-lucide="table" class="w-6 h-6 mr-2"></i> Results Preview (Top 15 Rows)
+                <i data-lucide="table" class="w-6 h-6 mr-2"></i> Preview: Old vs New (Top 100 Rows)
             </h2>
             <div id="previewContainer" class="preview-container">
                 <div class="p-12 text-center text-gray-500">
                     <i data-lucide="file-spreadsheet" class="w-16 h-16 mx-auto mb-4 opacity-10"></i>
-                    <p>Upload a file and run the tool to see changes here.</p>
+                    <p>Upload a file and run the tool to see the visual comparison here.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // State
         let originalData = null;
         let adjustedData = null;
         let headers = null;
 
-        // Init icons
         lucide.createIcons();
 
-        // DOM
         const fileInput = document.getElementById('csvFile');
         const runButton = document.getElementById('runButton');
         const downloadButton = document.getElementById('downloadButton');
@@ -189,7 +193,8 @@
         const statsPanel = document.getElementById('statsPanel');
         const statsContent = document.getElementById('statsContent');
 
-        // File loading
+        const cleanPrice = (val) => parseFloat(String(val || "0").replace(/[$,]/g, ''));
+
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -198,6 +203,7 @@
             statusMessage.className = "mt-6 text-center text-blue-400";
 
             Papa.parse(file, {
+                skipEmptyLines: true,
                 complete: function(results) {
                     originalData = results.data;
                     headers = results.data[0];
@@ -205,6 +211,7 @@
                     statusMessage.className = "mt-6 text-center text-green-400 font-bold";
                     downloadButton.disabled = true;
                     statsPanel.classList.add('hidden');
+                    updatePreview(1, 100);
                 },
                 error: function(err) {
                     statusMessage.textContent = "Error parsing file: " + err.message;
@@ -213,7 +220,6 @@
             });
         });
 
-        // Processing Logic
         runButton.addEventListener('click', () => {
             if (!originalData) {
                 statusMessage.textContent = "Error: Please select a CSV file first.";
@@ -224,18 +230,15 @@
             statusMessage.textContent = "Calculating adjustments...";
             statusMessage.className = "mt-6 text-center text-blue-400 animate-pulse";
 
-            // Multipliers
             const multJ = 1 + (parseFloat(document.getElementById('adjJ').value) || 0) / 100;
             const multRPrice = 1 + (parseFloat(document.getElementById('adjRPrice').value) || 0) / 100;
             const multRCost = 1 + (parseFloat(document.getElementById('adjRCost').value) || 0) / 100;
             const multRFabric = 1 + (parseFloat(document.getElementById('adjRFabricCost').value) || 0) / 100;
 
-            // Static Overrides
             const sRPrice = document.getElementById('staticRPrice').value ? parseFloat(document.getElementById('staticRPrice').value) : null;
             const sRCost = document.getElementById('staticRCost').value ? parseFloat(document.getElementById('staticRCost').value) : null;
             const sRFabric = document.getElementById('staticRFabricCost').value ? parseFloat(document.getElementById('staticRFabricCost').value) : null;
 
-            // Names
             const nPrice = document.getElementById('fieldNamePrice').value.trim();
             const nCost = document.getElementById('fieldNameCost').value.trim();
             const nFabric = document.getElementById('fieldNameFabricCost').value.trim();
@@ -243,68 +246,64 @@
             let countJ = 0, countRP = 0, countRC = 0, countRF = 0;
 
             adjustedData = originalData.map((row, idx) => {
-                if (idx === 0 || !row || row.length < 5) return row; // Header or empty
+                if (idx === 0 || !row || row.length < 10) return row; 
 
                 const newRow = [...row];
 
-                // --- Column J Logic ---
-                // BigCommerce SKU is usually index 4. Price is usually index 9.
                 const sku = String(row[4] || "").toLowerCase();
                 if (sku.includes('per-yard')) {
-                    const currentPrice = parseFloat(row[9]);
+                    const currentPrice = cleanPrice(row[9]);
                     if (!isNaN(currentPrice)) {
                         newRow[9] = (currentPrice * multJ).toFixed(2);
                         countJ++;
                     }
                 }
 
-                // --- Column R Logic (JSON) ---
-                // Custom Fields is usually index 17
-                const rawJSON = row[17];
-                if (rawJSON && rawJSON.trim().startsWith('[')) {
-                    try {
-                        let fields = JSON.parse(rawJSON);
-                        let changed = false;
+                if (row.length >= 18) {
+                    const rawJSON = row[17];
+                    if (rawJSON && rawJSON.trim().startsWith('[')) {
+                        try {
+                            let fields = JSON.parse(rawJSON);
+                            let changed = false;
 
-                        fields = fields.map(field => {
-                            const clean = (val) => parseFloat(String(val).replace(/[$,]/g, ''));
-                            let finalVal = null;
-                            let matched = false;
+                            fields = fields.map(field => {
+                                let finalVal = null;
+                                let matched = false;
 
-                            if (field.name === nPrice) {
-                                matched = true;
-                                finalVal = sRPrice !== null ? sRPrice : (clean(field.value) * multRPrice);
-                                countRP++;
-                            } else if (field.name === nCost) {
-                                matched = true;
-                                finalVal = sRCost !== null ? sRCost : (clean(field.value) * multRCost);
-                                countRC++;
-                            } else if (field.name === nFabric) {
-                                matched = true;
-                                finalVal = sRFabric !== null ? sRFabric : (clean(field.value) * multRFabric);
-                                countRF++;
-                            }
+                                if (field.name === nPrice) {
+                                    matched = true;
+                                    finalVal = sRPrice !== null ? sRPrice : (cleanPrice(field.value) * multRPrice);
+                                    countRP++;
+                                } else if (field.name === nCost) {
+                                    matched = true;
+                                    finalVal = sRCost !== null ? sRCost : (cleanPrice(field.value) * multRCost);
+                                    countRC++;
+                                } else if (field.name === nFabric) {
+                                    matched = true;
+                                    finalVal = sRFabric !== null ? sRFabric : (cleanPrice(field.value) * multRFabric);
+                                    countRF++;
+                                }
 
-                            if (matched && !isNaN(finalVal)) {
-                                field.value = `$${finalVal.toFixed(2)}`;
-                                changed = true;
-                            }
-                            return field;
-                        });
+                                if (matched && !isNaN(finalVal)) {
+                                    field.value = `$${finalVal.toFixed(2)}`;
+                                    changed = true;
+                                }
+                                return field;
+                            });
 
-                        if (changed) newRow[17] = JSON.stringify(fields);
-                    } catch (e) { console.warn("JSON error at row " + idx, e); }
+                            if (changed) newRow[17] = JSON.stringify(fields);
+                        } catch (e) { console.warn("JSON error at row " + idx, e); }
+                    }
                 }
 
                 return newRow;
             });
 
-            // Update UI
             updateStats(countJ, countRP, countRC, countRF, adjustedData.length - 1);
-            updatePreview(adjustedData.slice(0, 16));
+            updatePreview(1, 100);
             
             downloadButton.disabled = false;
-            statusMessage.textContent = "Processing Finished! Review the preview below.";
+            statusMessage.textContent = `Finished! ${countJ + countRP + countRC + countRF} updates made.`;
             statusMessage.className = "mt-6 text-center text-green-400 font-bold";
         });
 
@@ -321,27 +320,67 @@
                 <div class="${boxClass}"><span class="${labelClass} text-purple-400">R: Cost Fields</span><span class="${valClass} text-purple-400">${rc}</span></div>
                 <div class="${boxClass}"><span class="${labelClass} text-purple-400">R: Fabric Cost</span><span class="${valClass} text-purple-400">${rf}</span></div>
             `;
+            lucide.createIcons();
         }
 
-        function updatePreview(rows) {
+        function updatePreview(start, count) {
+            if (!originalData) return;
+            const end = Math.min(start + count, originalData.length);
+            
             let html = '<table><thead><tr>';
             headers.forEach(h => html += `<th>${h}</th>`);
             html += '</tr></thead><tbody>';
 
-            rows.slice(1).forEach(row => {
+            for (let i = start; i < end; i++) {
+                const oldRow = originalData[i];
+                const newRow = adjustedData ? adjustedData[i] : oldRow;
+
                 html += '<tr>';
-                row.forEach((cell, i) => {
+                newRow.forEach((cell, cellIdx) => {
                     let cls = "";
-                    if (i === 9) cls = "highlight-j";
-                    if (i === 17) cls = "highlight-r";
+                    if (cellIdx === 9) cls = "highlight-j";
+                    if (cellIdx === 17) cls = "highlight-r";
                     
-                    let val = String(cell);
-                    if (i === 17 && val.length > 50) val = val.substring(0, 47) + "...";
-                    
-                    html += `<td class="${cls}">${val}</td>`;
+                    let content = "";
+                    const oldVal = String(oldRow[cellIdx] || "");
+                    const newVal = String(newRow[cellIdx] || "");
+
+                    if (cellIdx === 9 && adjustedData && oldVal !== newVal) {
+                        content = `<span class="diff-old">${oldVal.startsWith('$') ? '' : '$'}${oldVal}</span><span class="diff-new">$${newVal}</span>`;
+                    } 
+                    else if (cellIdx === 17 && adjustedData && oldVal !== newVal) {
+                        try {
+                            const oldJson = JSON.parse(oldVal);
+                            const newJson = JSON.parse(newVal);
+                            let jsonHtml = '<div class="json-content">[';
+                            newJson.forEach((field, fIdx) => {
+                                const oldField = oldJson[fIdx];
+                                const isChanged = oldField && oldField.value !== field.value;
+                                jsonHtml += `\n  { "name": "${field.name}", "value": "`;
+                                if (isChanged) {
+                                    jsonHtml += `<span class="diff-old">${oldField.value}</span><span class="diff-new">${field.value}</span>`;
+                                } else {
+                                    jsonHtml += field.value;
+                                }
+                                jsonHtml += `" }${fIdx < newJson.length - 1 ? ',' : ''}`;
+                            });
+                            jsonHtml += '\n]</div>';
+                            content = jsonHtml;
+                        } catch(e) { content = `<div class="json-content">${newVal}</div>`; }
+                    }
+                    else if (cellIdx === 17) {
+                        content = `<div class="json-content">${newVal}</div>`;
+                    }
+                    else if (cellIdx === 11 || (cellIdx !== 17 && newVal.length > 100)) {
+                        content = newVal.length > 60 ? newVal.substring(0, 57) + "..." : newVal;
+                    }
+                    else {
+                        content = newVal;
+                    }
+                    html += `<td class="${cls}">${content}</td>`;
                 });
                 html += '</tr>';
-            });
+            }
             html += '</tbody></table>';
             previewContainer.innerHTML = html;
         }
