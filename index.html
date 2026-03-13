@@ -66,7 +66,7 @@
                 <div class="p-5 bg-slate-800/50 rounded-xl border border-slate-700">
                     <h3 class="text-lg font-medium text-blue-300 mb-4 flex items-center">
                         <span class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center mr-2 text-sm text-blue-400 font-bold">J</span>
-                        Column J Adjustments (Main Price)
+                        Column J Adjustments (Upholstery Fabric By The Yard Price)
                     </h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -92,7 +92,7 @@
                         Column R Adjustments (Custom JSON Fields)
                     </h3>
                     
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div class="space-y-4">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-widest border-b border-purple-500/20 pb-1">Price Adjustments</div>
                             <div>
@@ -140,30 +140,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="space-y-4">
-                            <div class="text-xs font-bold text-purple-400 uppercase tracking-widest border-b border-purple-500/20 pb-1">Fabric Cost Adjustments</div>
-                            <div>
-                                <label class="block text-[10px] text-gray-500 mb-1 uppercase">Field Name to Match</label>
-                                <input type="text" id="fieldNameFabricCost" value="Cost (FABRIC ONLY)" class="text-sm">
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-[10px] text-gray-500 mb-1 uppercase">Adjustment %</label>
-                                    <div class="flex gap-2">
-                                        <select id="dirRFabricCost" class="w-1/2 !p-2 text-xs">
-                                            <option value="inc">Increase</option>
-                                            <option value="dec">Decrease</option>
-                                        </select>
-                                        <input type="number" id="adjRFabricCost" value="0" step="0.01" class="w-1/2 !p-2 text-xs">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-blue-400 mb-1 uppercase font-bold">Static $</label>
-                                    <input type="number" id="staticRFabricCost" placeholder="Override" step="0.01" class="!p-2 text-xs">
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -185,7 +161,7 @@
             <h2 class="text-xl font-semibold mb-4 flex items-center">
                 <i data-lucide="bar-chart" class="w-6 h-6 mr-2 text-green-400"></i> Processing Results
             </h2>
-            <div id="statsContent" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+            <div id="statsContent" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
         </div>
 
         <!-- Preview Table -->
@@ -264,17 +240,14 @@
             const multJ = getMultiplier('adjJ', 'dirJ');
             const multRPrice = getMultiplier('adjRPrice', 'dirRPrice');
             const multRCost = getMultiplier('adjRCost', 'dirRCost');
-            const multRFabric = getMultiplier('adjRFabricCost', 'dirRFabricCost');
 
             const sRPrice = document.getElementById('staticRPrice').value ? parseFloat(document.getElementById('staticRPrice').value) : null;
             const sRCost = document.getElementById('staticRCost').value ? parseFloat(document.getElementById('staticRCost').value) : null;
-            const sRFabric = document.getElementById('staticRFabricCost').value ? parseFloat(document.getElementById('staticRFabricCost').value) : null;
 
             const nPrice = document.getElementById('fieldNamePrice').value.trim();
             const nCost = document.getElementById('fieldNameCost').value.trim();
-            const nFabric = document.getElementById('fieldNameFabricCost').value.trim();
 
-            let countJ = 0, countRP = 0, countRC = 0, countRF = 0;
+            let countJ = 0, countRP = 0, countRC = 0;
 
             adjustedData = originalData.map((row, idx) => {
                 if (idx === 0 || !row || row.length < 10) return row; 
@@ -309,10 +282,6 @@
                                     matched = true;
                                     finalVal = sRCost !== null ? sRCost : (cleanPrice(field.value) * multRCost);
                                     countRC++;
-                                } else if (field.name === nFabric) {
-                                    matched = true;
-                                    finalVal = sRFabric !== null ? sRFabric : (cleanPrice(field.value) * multRFabric);
-                                    countRF++;
                                 }
 
                                 if (matched && !isNaN(finalVal)) {
@@ -330,15 +299,15 @@
                 return newRow;
             });
 
-            updateStats(countJ, countRP, countRC, countRF, adjustedData.length - 1);
+            updateStats(countJ, countRP, countRC, adjustedData.length - 1);
             updatePreview(1, 100);
             
             downloadButton.disabled = false;
-            statusMessage.textContent = `Finished! ${countJ + countRP + countRC + countRF} updates made.`;
+            statusMessage.textContent = `Finished! ${countJ + countRP + countRC} updates made.`;
             statusMessage.className = "mt-6 text-center text-green-400 font-bold";
         });
 
-        function updateStats(j, rp, rc, rf, total) {
+        function updateStats(j, rp, rc, total) {
             statsPanel.classList.remove('hidden');
             const boxClass = "p-3 bg-slate-800 rounded-lg border border-slate-700 shadow-inner";
             const labelClass = "text-[10px] text-gray-500 uppercase font-bold";
@@ -349,7 +318,6 @@
                 <div class="${boxClass}"><span class="${labelClass} text-blue-400">J: Per Yard</span><span class="${valClass} text-blue-400">${j}</span></div>
                 <div class="${boxClass}"><span class="${labelClass} text-purple-400">R: Price Fields</span><span class="${valClass} text-purple-400">${rp}</span></div>
                 <div class="${boxClass}"><span class="${labelClass} text-purple-400">R: Cost Fields</span><span class="${valClass} text-purple-400">${rc}</span></div>
-                <div class="${boxClass}"><span class="${labelClass} text-purple-400">R: Fabric Cost</span><span class="${valClass} text-purple-400">${rf}</span></div>
             `;
             lucide.createIcons();
         }
